@@ -2,6 +2,7 @@
 using AuthApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Metadata.Ecma335;
 
 namespace AuthApi.Controllers
 {
@@ -75,11 +76,25 @@ namespace AuthApi.Controllers
             user.Email = newUserDto.Email;
             user.Password = newUserDto.Password;
 
-            await _context.SaveChangesAsync();
-
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
             return StatusCode(200, new { message = "Sikeresen módosítva", result = user });
+        }
+
+        [HttpDelete("deleteUser")]
+        public async Task<IActionResult> DeleteUser([FromQuery] Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+
+            if (user is null)
+            {
+                return StatusCode(404, new { message = "Nincs találat" });
+            }
+
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+
+            return StatusCode(200, new { message = "Frissítve", result = user });
         }
     }
 }
