@@ -1,5 +1,7 @@
 
 using Scalar.AspNetCore;
+using AuthApi.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace AuthApi
 {
@@ -10,6 +12,9 @@ namespace AuthApi
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+
+            builder.Services.AddDbContext<AuthuserContext>(options =>
+                options.UseMySQL(builder.Configuration.GetConnectionString("MySql")));
 
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
