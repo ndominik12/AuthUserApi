@@ -1,0 +1,4 @@
+.vs/
+AuthApi/appsettings.json
+**/bin/
+**/obj/
