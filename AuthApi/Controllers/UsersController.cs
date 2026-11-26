@@ -1,5 +1,7 @@
 ﻿using AuthApi.Models;
 using AuthApi.Models.DTOs;
+using AuthApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,24 +10,32 @@ namespace AuthApi.Controllers
 {
     [Route("users")]
     [ApiController]
+    
     public class UsersController : ControllerBase
     {
         private readonly AuthuserContext _context;
+        private readonly PasswordHasher _passwordHasher;
+        private readonly GenerateToken _generateToken;
 
-        public UsersController(AuthuserContext context)
+        public UsersController(AuthuserContext context, PasswordHasher passwordHasher, GenerateToken generateToken)
         {
             _context = context;
+            _passwordHasher = passwordHasher;
+            _generateToken = generateToken;
         }
 
         [HttpPost("newUser")]
         public async Task<IActionResult> NewUser([FromBody]NewUserDto newUserDto )
         {
+            var (hash, salt) = _passwordHasher.HashPassword(newUserDto.Password!);
+
             var user = new User
             {
                 Id = Guid.NewGuid(),
                 Name = newUserDto.Name,
                 Email = newUserDto.Email,
-                Password = newUserDto.Password,
+                Password = hash,
+                Salt = salt
             };
 
             if (user is null)
@@ -39,6 +49,7 @@ namespace AuthApi.Controllers
             return StatusCode(201, new { message = "Felvéve" , result = user});
         }
 
+        [Authorize(Roles = "student")]
         [HttpGet("allUser")]
         public async Task<IActionResult> AllUser()
         {
@@ -111,6 +122,36 @@ namespace AuthApi.Controllers
             }
 
             return StatusCode(400, new { message = "Hiba" });
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginUserDto loginUserDto)
+        {
+            try
+            {
+                var user = await _context.Users.Include(u => u.Roles)
+                    .SingleOrDefaultAsync(u => u.Email == loginUserDto.Email);
+
+                if (user is null)
+                {
+                    return StatusCode(404, new {message = "Nincs ilyen email"});
+                }
+
+                var isValid = _passwordHasher.Verify(loginUserDto.Password!,user.Password!,user.Salt!);
+
+                if (isValid)
+                {
+                    var newToken = _generateToken.Token(user.Id, user.Email!, user.Roles);
+
+                    return StatusCode(200, new { message = "Sikeres belépés", token = newToken});
+                }
+
+                return StatusCode(404, new { message = "Hibás jelszó" });
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(400, new { message = exception.Message });
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ public partial class AuthuserContext : DbContext
     public AuthuserContext(DbContextOptions<AuthuserContext> options)
         : base(options)
     {
+        Database.EnsureCreated();
     }
 
     public virtual DbSet<Role> Roles { get; set; }
